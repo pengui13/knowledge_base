@@ -2,182 +2,220 @@
 
 ## SQL vs NoSQL
 
-Порівняння:
+| | SQL | NoSQL |
+|---|---|---|
+| **Structure** | Tables | Documents, key-value, graphs |
+| **Schema** | Fixed | Flexible |
+| **Language** | SQL | Varies |
+| **ACID** | Yes | Often no |
+| **Scaling** | Vertical | Horizontal |
+| **Examples** | MySQL, PostgreSQL | MongoDB, Redis, Neo4j |
 
-Структура:
-SQL: Таблиці
-NoSQL: Документи, ключ-значення, графи
+---
 
-Дані Схема:
-SQL: Фіксована
-NoSQL: Гнучка
+## SQL Sublanguages
 
-Мова:
-SQL: SQL
-NoSQL: Різна
+| Sublanguage | Full Name | Purpose |
+|---|---|---|
+| **DDL** | Data Definition Language | Structure — tables, indexes |
+| **DML** | Data Manipulation Language | Data — insert, read, update |
+| **DQL** | Data Query Language | Querying data |
+| **DCL** | Data Control Language | Access control |
+| **TCL** | Transaction Control Language | Transactions |
 
-ACID:
-SQL: Так
-NoSQL: Часто ні
+---
 
-Масштабування:
-SQL: Вертикальне
-NoSQL: Горизонтальне
+## DDL — Data Definition Language
 
-Приклади:
-SQL: MySQL, PostgreSQL
-NoSQL: MongoDB, Redis, Neo4j
-
-## Підвиди SQL
-
-Підвиди - Назва:
-
-Підмова - Для чого:
-DDL - Data Definition Language - Структура (таблиці, індекси)
-DML - Data Manipulation Language - Дані (вставити, читати, змінити)
-DCL - Data Control Language - Права доступу
-TCL - Transaction Control Language - Транзакції
-DQL - Data Query Language - Для сприйняття
-
-## DDL (Data Definition Language)
-
-CREATE - Створити
-ALTER - Змінити
-DROP - Видалити
-TRUNCATE - Очистити
+| Command | What it does |
+|---|---|
+| `CREATE` | Create database/table/index |
+| `ALTER` | Modify existing structure |
+| `DROP` | Delete structure permanently |
+| `TRUNCATE` | Clear all data, keep structure |
 
 ### CREATE
 
-Приклади:
-
+```sql
 CREATE DATABASE university;
 
 CREATE TABLE students (
   student_id INT PRIMARY KEY AUTO_INCREMENT,
-  gpa DECIMAL(3,2)
+  name       VARCHAR(100),
+  age        INT,
+  gpa        DECIMAL(3,2)
 );
+```
 
-## DML (Data Manipulation Language)
+### ALTER
 
-Робота з даними:
+```sql
+ALTER TABLE students ADD phone VARCHAR(20);          -- add column
+ALTER TABLE students MODIFY phone VARCHAR(50);       -- change column type
+ALTER TABLE students DROP COLUMN phone;              -- remove column
+ALTER TABLE students RENAME COLUMN name TO fullname; -- rename column
+ALTER TABLE students ADD CONSTRAINT chk_gpa CHECK (gpa >= 0 AND gpa <= 4);
+```
 
-SELECT - Читати
-INSERT - Вставити
-UPDATE - Оновити
-DELETE - Видалити (наділове приклади не табл.)
+### DROP
+
+```sql
+DROP TABLE students;
+DROP TABLE IF EXISTS students;   -- safe version, no error if not exists
+DROP DATABASE university;
+DROP INDEX idx_name ON students;
+```
+
+### TRUNCATE
+
+```sql
+TRUNCATE TABLE students;  -- deletes all rows, keeps table structure
+```
+
+**TRUNCATE vs DELETE:**
+
+| | TRUNCATE | DELETE |
+|---|---|---|
+| **Filters** | No — removes all rows | Yes — supports `WHERE` |
+| **Speed** | Fast | Slower |
+| **Logging** | Minimal | Full |
+| **Rollback** | Cannot | Can |
+| **AUTO_INCREMENT** | Resets | Does not reset |
+
+---
+
+## DML — Data Manipulation Language
+
+| Command | What it does |
+|---|---|
+| `SELECT` | Read data |
+| `INSERT` | Insert data |
+| `UPDATE` | Update data |
+| `DELETE` | Delete rows |
 
 ### SELECT
 
+```sql
 SELECT * FROM students WHERE age = 20;
+SELECT name, gpa FROM students WHERE age > 18 ORDER BY gpa DESC;
+```
 
 ### INSERT
 
+```sql
 INSERT INTO students (name, age) VALUES ('John', 20);
+INSERT INTO students (name, age) VALUES ('Alice', 22), ('Bob', 21);  -- multiple rows
+```
 
 ### UPDATE
 
+```sql
 UPDATE students SET age = 21 WHERE student_id = 1;
+UPDATE students SET gpa = 4.0 WHERE name = 'Alice';
+```
 
 ### DELETE
 
+```sql
 DELETE FROM students WHERE age < 18;
+DELETE FROM students;  -- deletes all rows (unlike TRUNCATE, supports rollback)
+```
 
-## DCL (Data Control Language)
+---
 
-Керування правами доступу:
+## DQL — Data Query Language
 
-GRANT - Надати
-REVOKE - Забрати (право на SELECT)
+DQL is technically part of DML but often treated separately. It's just `SELECT` and its clauses.
 
-### Приклади GRANT
+| Clause | What it does |
+|---|---|
+| `FROM` | Which table to read from |
+| `WHERE` | Filter rows **before** grouping/aggregation |
+| `GROUP BY` | Group rows with the same value in a column |
+| `HAVING` | Filter results **after** GROUP BY (like WHERE but for groups) |
+| `ORDER BY` | Sort results |
+| `DISTINCT` | Remove duplicate rows |
+| `LIMIT` | Return only N rows |
 
-GRANT SELECT ON students TO user1;
-- Кінця право
+**Execution order** (how SQL actually processes a query):
+```
+FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT
+```
 
-GRANT SELECT, INSERT, UPDATE ON students to user1;
-- Всі права на всю базу
+```sql
+SELECT age, COUNT(*) AS total
+FROM students
+WHERE gpa > 2.0
+GROUP BY age
+HAVING COUNT(*) > 5
+ORDER BY age DESC
+LIMIT 10;
+```
 
-GRANT ALL PRIVILEGES ON students TO user1;
-- Право створок, користувачів
+---
 
-GRANT CREATE USER TO admin;
+## DCL — Data Control Language
 
-### Приклади REVOKE
+| Command | What it does |
+|---|---|
+| `GRANT` | Give permissions |
+| `REVOKE` | Remove permissions |
 
-- З правом передавати іншим
+### GRANT
 
-GRANT SELECT ON students TO user1 WITH GRANT OPTION;
+```sql
+GRANT SELECT ON students TO user1;                         -- single permission
+GRANT SELECT, INSERT, UPDATE ON students TO user1;         -- multiple permissions
+GRANT ALL PRIVILEGES ON students TO user1;                 -- all permissions
+GRANT CREATE USER TO admin;                                -- admin permission
+GRANT SELECT ON students TO user1 WITH GRANT OPTION;       -- user can also grant to others
+```
 
-REVOKE:
+### REVOKE
 
+```sql
 REVOKE INSERT ON students FROM user1;
-REVOKE ALL PRIVILEGES on students FROM user1;
+REVOKE ALL PRIVILEGES ON students FROM user1;
+```
 
-## DQL (Data Query Language)
+---
 
-LIMIT (по кількості, сортує і залишає/ський порядок) - відпали n рядків
-ORDER BY - сортує
-DISTINCT - Залишає 3 дублікати
-HAVING - Фільтрує результат GROUP BY
-GROUP BY - Попу рядки, що мають однак, знач. в запаленому стовпці
-WHERE - Фільтрує дані перед групуванням/агрегацією
-FROM - Початує табл. з якої брати дані
+## TCL — Transaction Control Language
 
-## TCL (Transaction Control Language)
+| Command | What it does |
+|---|---|
+| `BEGIN` / `START TRANSACTION` | Start a transaction |
+| `COMMIT` | Save all changes |
+| `ROLLBACK` | Undo all changes |
+| `SAVEPOINT` | Create a checkpoint inside a transaction |
 
-Команди - Що робить:
+### Basic transaction
 
-BEGIN / START TRANSACTION - Почати транз.
-COMMIT - Зберегти зміни
-ROLLBACK - Відміни зміни
-SAVEPOINT - Точка збереження
-
-### Приклад
-
+```sql
 START TRANSACTION;
+
 UPDATE accounts SET balance = balance - 100 WHERE acc_id = 1;
 UPDATE accounts SET balance = balance + 100 WHERE acc_id = 2;
-COMMIT; (якщо все гід)
 
-Інакше:
-ROLLBACK;
+COMMIT;    -- if everything is fine
+-- or
+ROLLBACK;  -- if something went wrong
+```
 
 ### SAVEPOINT
 
+Useful when you want to roll back only part of a transaction, not all of it.
+
+```sql
 START TRANSACTION;
-INSERT INTO ...
-SAVEPOINT order_created;
-INSERT ... order_items
-INSERT ...
-(Щось пішло не так з items)
-ROLLBACK TO order_created;
+
+INSERT INTO orders (...) VALUES (...);
+SAVEPOINT order_created;             -- checkpoint after order is created
+
+INSERT INTO order_items (...) VALUES (...);
+INSERT INTO order_items (...) VALUES (...);
+-- something went wrong with items
+
+ROLLBACK TO order_created;           -- undo only the items, keep the order
 COMMIT;
-
-## ALTER
-
-ALTER TABLE students ADD phone VARCHAR(20);
-ALTER TABLE students MODIFY phone VARCHAR(50);
-ALTER TABLE students DROP COLUMN phone;
-ALTER TABLE students RENAME COLUMN name to fullname;
-ALTER TABLE students ADD CONSTRAINT chk_age CHECK (gpa >= 0 AND gpa <= 4);
-
-## DROP
-
-DROP TABLE students;
-DROP TABLE IF EXISTS students;
-DROP d DATABASE university;
-DROP INDEX idx_name ON students;
-
-## TRUNCATE
-
-TRUNCATE TABLE students; (Видалити всі дані, залишити структуру)
-
-### TRUNCATE vs DELETE
-
-TRUNCATE - DELETE:
-
-Що видаляє: Всі рядки - Можна з WHERE
-Швидкість: Швидко - Повільніше
-Лог: Мінімальний - Повніша
-Відкат: Не можна - Можна
-AUTO_INCREMENT: Скидає - Не скидає
+```

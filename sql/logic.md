@@ -1,131 +1,172 @@
-# Реляційна алгебра - мат. основа SQL. Набір операцій
+# Реляційна алгебра
 
-## Над таблицями
+Математична основа SQL. Набір операцій над таблицями.
 
-Операція - Символ - Що робить:
+## Операції
 
-Вибір (Selection) - σ - Фільтрує рядки
-Проєкція (Projection) - π - Вибирає стовпці
-Об'єднання (Union) - ∪ - Зливає таблиці
-Перетин (Intersection) - ∩ - Спільні рядки
-Різниця (Difference) - − - Рядки А, яких немає в В
-Декартовий добуток - × - Всі комбінації рядків
-З'єднання (JOIN) - ⋈ - Комбінує по умові
-Ділення (Division) - ÷ - Знаходить "всі"
+| Операція | Символ | Що робить |
+|---|---|---|
+| Вибір (Selection) | σ | Фільтрує рядки |
+| Проєкція (Projection) | π | Вибирає стовпці |
+| Об'єднання (Union) | ∪ | Зливає таблиці |
+| Перетин (Intersection) | ∩ | Спільні рядки |
+| Різниця (Difference) | − | Рядки А, яких немає в В |
+| Декартовий добуток | × | Всі комбінації рядків |
+| З'єднання (JOIN) | ⋈ | Комбінує по умові |
+| Ділення (Division) | ÷ | Знаходить "всі" |
 
-## 1. Вибір - σ
+---
 
-Алгебра: σ (Age = 20) (Students)
+## 1. Вибір — σ
 
-SQL: SELECT * FROM students WHERE age = 20;
+Фільтрує рядки за умовою.
 
-## 2. Проєкція - π
+```
+Алгебра: σ(Age = 20)(Students)
+```
+```sql
+SELECT * FROM students WHERE age = 20;
+```
 
-Вибирає певні стовпці.
+---
 
-Алгебра: π (Name, Age) (Students)
+## 2. Проєкція — π
 
-SQL: SELECT Name, Age FROM Students;
+Вибирає певні стовпці. **Автоматично видаляє дублікати** — на відміну від SQL, де потрібен `DISTINCT`.
 
-### Проєкція - Видалює дублікати - Є SQL тільки DISTINCT
+```
+Алгебра: π(Name, Age)(Students)
+```
+```sql
+SELECT DISTINCT Name, Age FROM Students;
+```
 
-## 3. Об'єднання (UNION) - ∪
+---
 
-Зливає рядки з 2 табл., видаляє дублікати.
+## 3. Об'єднання — ∪
 
-Алгебра: Students_A ∪ Students_B (щоби мати однакову структуру)
+Зливає рядки з двох таблиць, видаляє дублікати. Таблиці повинні мати однакову структуру.
 
-SQL: SELECT * FROM Students_A
-     UNION
-     SELECT * FROM Students_B
+```
+Алгебра: Students_A ∪ Students_B
+```
+```sql
+-- без дублікатів
+SELECT * FROM Students_A
+UNION
+SELECT * FROM Students_B;
 
-UNION ALL - Залишає дублікати:
-
+-- з дублікатами
 SELECT * FROM Students_A
 UNION ALL
-SELECT * FROM Students_B
+SELECT * FROM Students_B;
+```
 
-## 4. Перетин - ∩
+---
 
+## 4. Перетин — ∩
+
+Повертає тільки спільні рядки з обох таблиць.
+
+```
 Алгебра: Students_A ∩ Students_B
+```
+```sql
+SELECT * FROM Students_A
+INTERSECT
+SELECT * FROM Students_B;
 
-SQL: SELECT * FROM Students_A
-     INTERSECT
-     SELECT * FROM Students_B
+-- альтернатива (якщо INTERSECT не підтримується)
+SELECT * FROM Students_A
+WHERE ID IN (SELECT ID FROM Students_B);
+```
 
-Альтернатива (якщо INTERSECT не підтримується):
+---
 
-SELECT * FROM Students_A WHERE ID IN (SELECT ID FROM Students_B);
+## 5. Різниця — −
 
-## 5. Різниця - −
+Повертає рядки з A, яких немає в B.
 
+```
 Алгебра: Students_A − Students_B
+```
+```sql
+SELECT * FROM Students_A
+EXCEPT
+SELECT * FROM Students_B;
 
-SQL: SELECT * FROM Students_A
-     EXCEPT
-     SELECT * FROM Students_B;
-
-Альтернатива:
-
+-- альтернатива
 SELECT * FROM Students_A
 WHERE ID NOT IN (SELECT ID FROM Students_B);
+```
 
-## 6. Декартовий добуток (Cartesian Product) - ×
+---
 
+## 6. Декартовий добуток — ×
+
+Всі можливі комбінації рядків двох таблиць. Якщо A має 3 рядки, B має 4 — результат 12 рядків.
+
+```
 Алгебра: Students × Courses
-
-SQL: SELECT * FROM Students, Courses;
-
-або:
-
+```
+```sql
 SELECT * FROM Students CROSS JOIN Courses;
+-- або
+SELECT * FROM Students, Courses;
+```
 
-## 7. З'єднання JOIN - ⋈
+---
 
-Декартовий добуток + фільтр по умові.
+## 7. З'єднання — ⋈
 
-Алгебра: Students ⋈ (Students.ID = Enrollments.Student_ID) Enrollments
+Декартовий добуток + фільтр по умові. Основа всіх JOIN.
 
-SQL:
-
+```
+Алгебра: Students ⋈(Students.ID = Enrollments.Student_ID) Enrollments
+```
+```sql
 SELECT s.Name, c.Title
 FROM Students s
 INNER JOIN Enrollments e ON s.ID = e.Student_ID
-INNER JOIN Courses c ON e.Course_ID = c.ID
+INNER JOIN Courses c ON e.Course_ID = c.ID;
+```
 
-## Типи JOIN
+### Типи JOIN
 
-### INNER JOIN - Тільки ЗПА
+| Тип | Що повертає |
+|---|---|
+| `INNER JOIN` | Тільки збіги з обох таблиць |
+| `LEFT JOIN` | Всі з лівої + збіги з правої |
+| `RIGHT JOIN` | Всі з правої + збіги з лівої |
+| `FULL JOIN` | Всі рядки з обох таблиць |
+| `CROSS JOIN` | Декартовий добуток |
+| `NATURAL JOIN` | Автоматично з'єднує по однакових колонках |
 
-Всі з лівої + збіги з правої
+---
 
-### LEFT JOIN - Всі з лівої + збіги з правої
+## 8. Ділення — ÷
 
-### RIGHT JOIN - Всі з правої + збіги з лівої
+Найскладніша операція. Відповідає на питання **"Хто має ВСЕ?"**
 
-### FULL JOIN - Всі з обох
+**Питання:** Які студенти записалися на ВСІ курси?
 
-### NATURAL JOIN - Автоматично з'єднує по однакових колонках
-
-## Ділення (Division) - ÷
-
-Найскладніша операція. Знаходить "Ти, Хто має Все".
-
-Питання: Які студенти записалися на ВСІ курси?
-
-Enrollments:
-Student_ID | Course_ID | ID
-1          | 1         | 1
-1          | 2         | 2
-2          | 1         | Student_ID
-
+```
 Алгебра: Enrollments ÷ Courses
+```
 
-SQL (Через правого оператора):
+Дані:
 
-Спосіб:
+| Student_ID | Course_ID |
+|---|---|
+| 1 | 1 |
+| 1 | 2 |
+| 2 | 1 |
 
+Студент 1 записаний на курси 1 і 2 — на всі. Студент 2 тільки на курс 1 — не на всі.
+
+```sql
 SELECT Student_ID
 FROM Enrollments
 GROUP BY Student_ID
 HAVING COUNT(DISTINCT Course_ID) = (SELECT COUNT(*) FROM Courses);
+```
