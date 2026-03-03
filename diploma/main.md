@@ -456,3 +456,171 @@ The naive VaR, calibrated on the full unconditional distribution, applies a thre
 The annual distribution of breaches provides the most compelling visual evidence of model misspecification. The naive VaR produces extreme breach concentrations in 2008 (~49 breaches) and 2020 (~30 breaches) — approximately four times the expected annual rate of ~12 breaches. These spikes reflect the fundamental failure of a static threshold to adapt to structural changes in market volatility.
 
 The regime-conditional VaR distributes breaches more evenly across years, demonstrating that regime-awareness substantially reduces the model's vulnerability to being blindsided during market crises. This result constitutes the primary empirical contribution of the present analysis: **regime-based risk estimation provides more consistent tail coverage across varying market conditions than conventional unconditional VaR**.
+
+![alt text](telegram-cloud-photo-size-2-5249062983839718042-y.jpg)
+
+
+## 3.5 Volatility Modeling
+
+### 3.5.1 Introduction to ARCH
+
+#### The Problem with Constant Variance
+
+The VaR analysis in Section 3.4 demonstrated that a single unconditional threshold fails to adapt to structural changes in market conditions. This failure has a deeper statistical root: the implicit assumption that return variance is constant over time — a property known as **homoskedasticity**.
+
+Formally, classical models of financial returns assume:
+
+$$r_t = \mu + \varepsilon_t, \qquad \varepsilon_t \sim \mathcal{N}(0,\, \sigma^2)$$
+
+where $\sigma^2$ is a fixed constant. Under this assumption, the distribution of tomorrow's return is identical regardless of whether markets have been calm for six months or have just experienced a crash. This is empirically false, as documented in Section 3.2: volatility clusters in time, with turbulent periods following turbulent periods and calm periods following calm periods.
+
+The question then becomes: *how should time-varying variance be modeled formally?*
+
+---
+
+#### Engle's Insight
+
+Robert Engle (1982) proposed a deceptively simple answer: **let today's variance be a function of past squared residuals**. The intuition is direct — if yesterday's return was an extreme outlier (a large shock, positive or negative), there is good reason to expect elevated uncertainty today. If the past several days have been uneventful, today is likely to be uneventful as well.
+
+This gives the **ARCH(1)** model — *Autoregressive Conditional Heteroskedasticity* of order 1:
+
+$$\sigma_t^2 = \omega + \alpha_1\, \varepsilon_{t-1}^2$$
+
+where:
+- $\sigma_t^2$ is the **conditional variance** at time $t$ — the variance of today's return given all past information
+- $\omega > 0$ is a constant baseline variance level
+- $\varepsilon_{t-1}^2$ is the **squared residual from yesterday** — a measure of how large yesterday's shock was, regardless of direction
+- $\alpha_1 \geq 0$ governs how strongly yesterday's shock transmits into today's variance
+
+The use of squared residuals rather than raw residuals is deliberate: squaring removes the sign of the shock (a −5% day and a +5% day are equally destabilizing in terms of risk), while preserving and amplifying the magnitude.
+
+---
+
+#### The General ARCH(q) Model
+
+The ARCH(1) specification looks only one period back. In practice, volatility persistence may span days or weeks, motivating a richer lag structure. The general **ARCH(q)** model extends this to $q$ lags:
+
+$$\sigma_t^2 = \omega + \sum_{i=1}^{q} \alpha_i\, \varepsilon_{t-i}^2$$
+
+Each coefficient $\alpha_i$ captures the contribution of the shock from $i$ periods ago to current variance. For the model to be well-behaved — specifically, for the unconditional variance to be finite and the process to be covariance-stationary — the following condition must hold:
+
+$$\sum_{i=1}^{q} \alpha_i < 1$$
+
+This ensures that the effect of any single shock eventually dissipates rather than accumulating without bound.
+
+---
+
+#### A Numerical Illustration
+
+Consider an ARCH(1) process with $\omega = 0.0001$ and $\alpha_1 = 0.30$, estimated on daily log-returns. Suppose yesterday's log-return was $r_{t-1} = -0.04$ (a −4% day, consistent with a moderate crisis event). The conditional variance for today is:
+
+$$\sigma_t^2 = 0.0001 + 0.30 \times (-0.04)^2 = 0.0001 + 0.30 \times 0.0016 = 0.00058$$
+
+$$\sigma_t = \sqrt{0.00058} \approx 2.41\%$$
+
+Now suppose instead yesterday was quiet: $r_{t-1} = -0.001$. Then:
+
+$$\sigma_t^2 = 0.0001 + 0.30 \times (0.001)^2 = 0.0001 + 0.0000003 \approx 0.0001$$
+
+$$\sigma_t \approx 1.00\%$$
+
+The conditional volatility following the large shock is more than twice that following the quiet day — purely as a mechanical consequence of the model structure. This is precisely the regime-switching behavior observed in Section 3.2, now captured within a single parametric framework.
+
+---
+
+#### Limitations of ARCH and the Path to GARCH
+
+Despite its theoretical elegance, ARCH(q) has a practical limitation. Empirically, volatility persistence in financial markets is long-lived — a spike in volatility during a crisis can remain elevated for weeks or months. Capturing this with ARCH requires a high order $q$, often 20 or more lags, each requiring its own parameter estimate. This creates two problems:
+
+1. **Parameter proliferation** — estimating 20+ $\alpha_i$ coefficients reliably requires very large samples and introduces overfitting risk.
+2. **Positivity constraints** — each $\alpha_i$ must be non-negative, and the stationarity constraint $\sum \alpha_i < 1$ becomes increasingly difficult to enforce as $q$ grows.
+
+Bollerslev (1986) resolved this with a parsimonious extension: rather than adding more lags of $\varepsilon^2$, introduce a single lag of the **variance itself** into the equation. This produces the Generalized ARCH — GARCH — model, which achieves the same long-memory behavior with far fewer parameters and is developed in the following section.
+
+### 3.5.2 Introduction to GARCH
+
+#### The Limitation of ARCH
+
+The ARCH(q) model introduced in Section 3.5.1 established the foundational principle that conditional variance is time-varying and driven by past squared residuals. However, a practical limitation emerges when applied to financial data: volatility persistence in real markets is long-lived. Following a crisis event, elevated volatility may persist for weeks or months — a phenomenon that ARCH can only capture by extending the lag order $q$ to 20, 30, or beyond.
+
+This creates two compounding problems. First, estimating $q + 1$ parameters reliably demands very large samples and introduces overfitting risk. Second, enforcing the non-negativity and stationarity constraints $\alpha_i \geq 0$ and $\sum_{i=1}^{q} \alpha_i < 1$ becomes increasingly difficult as $q$ grows. In practice, high-order ARCH models are numerically unstable and rarely used directly.
+
+Bollerslev (1986) proposed an elegant resolution: rather than accumulating many lags of $\varepsilon^2$, introduce a single lag of the **conditional variance itself** into the equation. This captures the same long-memory behavior with a drastically reduced parameter set.
+
+---
+
+#### The GARCH(1,1) Model
+
+The **Generalized Autoregressive Conditional Heteroskedasticity** model of order (1,1) is defined as:
+
+$$\sigma_t^2 = \omega + \alpha\, \varepsilon_{t-1}^2 + \beta\, \sigma_{t-1}^2$$
+
+The equation contains three components with distinct economic interpretations:
+
+| Term | Parameter | Interpretation |
+|---|---|---|
+| $\omega$ | baseline | long-run variance floor; variance cannot fall below this level regardless of market conditions |
+| $\alpha\, \varepsilon_{t-1}^2$ | shock sensitivity | how strongly yesterday's squared residual transmits into today's variance — the ARCH component |
+| $\beta\, \sigma_{t-1}^2$ | persistence | how strongly yesterday's variance carries into today — the inertia component |
+
+The parameter $\beta$ is the key innovation over ARCH. A high value of $\beta$ (empirically, $\beta \approx 0.85$–$0.95$ for equity indices) means that variance decays slowly after a shock — the model "remembers" a crisis for an extended period without requiring additional lag terms.
+
+---
+
+#### Parameter Constraints
+
+For the GARCH(1,1) process to be covariance-stationary — that is, for the unconditional variance to be finite and well-defined — the following condition must hold:
+
+$$\alpha + \beta < 1$$
+
+The unconditional (long-run) variance implied by the model is then:
+
+$$\bar{\sigma}^2 = \frac{\omega}{1 - \alpha - \beta}$$
+
+When $\alpha + \beta \to 1$, the long-run variance diverges and shocks to variance become permanent. This limiting case is known as **IGARCH** (Integrated GARCH) and implies that volatility has no mean-reverting tendency — an extreme assumption not supported by most empirical evidence.
+
+---
+
+#### Volatility Persistence: A Numerical Illustration
+
+Consider a GARCH(1,1) process with parameters $\omega = 0.0001$, $\alpha = 0.09$, $\beta = 0.90$ — values representative of S&P 500 estimates. Suppose a crisis day occurs with $\varepsilon_{t} = -0.04$ (a $-4\%$ log-return) and $\sigma_t^2 = 0.0006$. The next day's conditional variance is:
+
+$$\sigma_{t+1}^2 = 0.0001 + 0.09 \times (0.04)^2 + 0.90 \times 0.0006 = 0.000784$$
+
+$$\sigma_{t+1} \approx 2.80\%$$
+
+Assuming subsequent days are quiet ($\varepsilon \approx 0.001$), the variance path decays as follows:
+
+| Days after shock | $\sigma^2$ | $\sigma$ |
+|---|---|---|
+| 0 (crisis day) | 0.000784 | 2.80% |
+| +1 | 0.000707 | 2.66% |
+| +3 | 0.000574 | 2.40% |
+| +7 | 0.000381 | 1.95% |
+| +14 | 0.000187 | 1.37% |
+
+The single parameter $\beta = 0.90$ sustains elevated volatility for two weeks following a single shock event — behavior that would require an ARCH(14) or higher to replicate with comparable accuracy, at the cost of eleven additional free parameters.
+
+---
+
+#### ARCH vs. GARCH: A Direct Comparison
+
+| Property | ARCH(q) | GARCH(1,1) |
+|---|---|---|
+| Equation | $\omega + \sum_{i=1}^q \alpha_i \varepsilon_{t-i}^2$ | $\omega + \alpha \varepsilon_{t-1}^2 + \beta \sigma_{t-1}^2$ |
+| Free parameters | $q + 1$ | 3 |
+| Long memory | only with large $q$ | automatic via $\beta$ |
+| Practical stability | deteriorates as $q$ grows | robust |
+| Standard usage | rarely used alone | industry standard |
+
+The parsimony of GARCH(1,1) — three parameters capturing the behavior of a much richer lag structure — is the primary reason it has remained the workhorse model of financial volatility for four decades.
+
+---
+
+#### The General GARCH(p, q) Specification
+
+The full GARCH(p, q) model extends the baseline specification to $p$ lags of past variance and $q$ lags of past squared residuals:
+
+$$\sigma_t^2 = \omega + \sum_{i=1}^{q} \alpha_i\, \varepsilon_{t-i}^2 + \sum_{j=1}^{p} \beta_j\, \sigma_{t-j}^2$$
+
+The stationarity condition generalizes to $\sum_{i=1}^{q} \alpha_i + \sum_{j=1}^{p} \beta_j < 1$. In practice, GARCH(1,1) is almost universally preferred over higher-order specifications — empirical studies consistently show that additional lags provide negligible improvement in fit while substantially increasing estimation complexity. The present analysis therefore adopts GARCH(1,1) as the baseline volatility specification throughout.
